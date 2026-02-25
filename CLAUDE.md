@@ -6,6 +6,7 @@ ClientBrain is an internal agency knowledge system for Massive Marketing. It cen
 
 ## Project Documentation
 
+- **Build Bible:** `docs/how-we-build.md` — session protocol, architecture principles, technical conventions, and decision log. Read at the start of every session.
 - **Build Brief:** `docs/clientbrain-brief.md` — full architecture, schema, plugin specs, and technical decisions. Read this before building anything.
 - **Roadmap:** `docs/clientbrain-roadmap.md` — quest-by-quest build plan with done conditions. Follow this in order.
 - **Conversion Copywriting Rules:** `docs/conversion-copywriting-skill.md` — the copy quality rules that must be injected into every Claude API call that generates copy.
@@ -41,6 +42,23 @@ Then wait. Do not proceed until the human confirms it works.
 
 At the end of each Level, the human runs through the Boss Check. This is the time for refactoring, fixing accumulated issues, and verifying everything works together.
 
+## Shared Supabase Tables — Analytics Bot
+
+The analytics bot (`apps/analytics-bot/`) is part of this project. Read `docs/analytics-bot-integration.md` for full details.
+
+**Do not modify or drop these tables** — they are owned by the analytics bot:
+- `slack_channels`
+- `analytics_gsc_daily`
+- `analytics_ga4_daily`
+- `analytics_attribution_daily`
+
+**Do not rename or remove** these columns (used by the analytics bot):
+- `clients.slug` — maps BQ client IDs to Supabase UUIDs
+- `metrics.ga4_bq_dataset` — BQ dataset ID for GA4 exports
+- `metrics.search_console_url` — Search Console property URL
+
+The `analytics_*` tables all have `client_id UUID REFERENCES clients(id)`, so any tool that knows a client UUID can query their performance data directly.
+
 ## Code Standards
 
 - Clean, readable code with comments on non-obvious decisions
@@ -67,12 +85,17 @@ At the end of each Level, the human runs through the Boss Check. This is the tim
 clientbrain/
 ├── CLAUDE.md                          ← you are here
 ├── docs/
+│   ├── how-we-build.md                ← build bible (read every session)
 │   ├── clientbrain-brief.md           ← full build spec
 │   ├── clientbrain-roadmap.md         ← quest tracker
+│   ├── analytics-bot-integration.md   ← analytics bot ↔ clientBrain contract
 │   └── conversion-copywriting-skill.md ← copy rules for prompts
 ├── packages/
 │   └── clientbrain-core/              ← shared types, API client, Claude wrapper, prompts, validators
 ├── apps/
+│   ├── analytics-bot/                 ← Slack analytics bot (Cloud Functions)
+│   ├── meeting-actions/               ← Granola → tasks → Asana (Cloud Functions)
+│   ├── client-manager/                ← Client creation + onboarding (Cloud Functions)
 │   ├── mcp-server/                    ← MCP server for Claude Code/Claude.ai
 │   ├── webflow-extension/             ← Webflow Designer Extension
 │   ├── figma-plugin/                  ← Figma Plugin

@@ -1,0 +1,8 @@
+{
+  "name": "analytics-bot-sync",
+  "version": "1.0.0",
+  "description": "Daily BQ to Supabase sync — runs once per day, speed not critical",
+  "dependencies": {
+    "@google-cloud/bigquery": "^7.0.0"
+  }
+}
