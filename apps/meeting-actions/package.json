@@ -1,0 +1,12 @@
+{
+  "name": "meeting-actions",
+  "version": "1.0.0",
+  "description": "Granola meeting notes → Supabase → task extraction → Asana pipeline",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.0"
+  }
+}
