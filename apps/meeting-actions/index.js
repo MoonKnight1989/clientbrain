@@ -100,6 +100,29 @@ async function matchClientByDomains(domains) {
   return null;
 }
 
+async function matchClientByFolder(folderMembership) {
+  if (!folderMembership || folderMembership.length === 0) return null;
+
+  // Try each folder name against client names (case-insensitive)
+  const folderNames = folderMembership.map(f => f.name).filter(Boolean);
+  if (folderNames.length === 0) return null;
+
+  const clients = await supabaseQuery('clients', {
+    query: '?select=id,name',
+  });
+
+  if (!clients) return null;
+
+  for (const folder of folderNames) {
+    const match = clients.find(c =>
+      c.name.toLowerCase() === folder.toLowerCase()
+    );
+    if (match) return match.id;
+  }
+
+  return null;
+}
+
 // --- Process a single note ---
 
 async function processNote(noteId) {
@@ -117,14 +140,24 @@ async function processNote(noteId) {
   const note = await fetchGranolaNote(noteId);
   console.log(`  Fetched: "${note.title}" (${note.attendees?.length || 0} attendees)`);
 
-  // Match client by attendee email domains
+  // Match client: domain first, then folder name fallback
   const attendees = note.attendees || [];
   const externalDomains = extractDomains(attendees);
-  const clientId = await matchClientByDomains(externalDomains);
-  const matchMethod = clientId ? 'domain' : null;
+  let clientId = await matchClientByDomains(externalDomains);
+  let matchMethod = clientId ? 'domain' : null;
+
+  if (!clientId) {
+    clientId = await matchClientByFolder(note.folder_membership);
+    matchMethod = clientId ? 'folder' : null;
+  }
+
   const status = clientId ? 'matched' : 'pending';
 
-  console.log(`  Domains: ${externalDomains.join(', ') || 'none'} → ${clientId ? `client ${clientId}` : 'no match'}`);
+  console.log(`  Domains: ${externalDomains.join(', ') || 'none'} → ${matchMethod ? `${matchMethod}: ${clientId}` : 'no match'}`);
+
+  // Extract meeting date from calendar event, fall back to Granola created_at
+  const calEvent = note.calendar_event || null;
+  const meetingDate = calEvent?.scheduled_start_time || note.created_at || null;
 
   // Store in Supabase
   await supabaseQuery('meeting_notes', {
@@ -133,14 +166,14 @@ async function processNote(noteId) {
       granola_note_id: noteId,
       client_id: clientId,
       title: note.title || 'Untitled Meeting',
+      meeting_date: meetingDate,
       attendees: attendees.map(a => ({ name: a.name, email: a.email })),
       summary_markdown: note.summary_markdown || null,
+      summary_text: note.summary_text || null,
       transcript: note.transcript || null,
-      calendar_event: note.calendar_event ? {
-        start: note.calendar_event.start,
-        end: note.calendar_event.end,
-        title: note.calendar_event.title,
-      } : null,
+      calendar_event: calEvent,
+      folder_membership: note.folder_membership || null,
+      owner: note.owner || null,
       match_method: matchMethod,
       status,
     },
